@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Control de Gasolina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .kpi-card {
+            display: flex;
+            align-items: center;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            color: white;
+        }
+        .kpi-icon {
+            flex-shrink: 0;
+            width: 3rem;
+            height: 3rem;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            margin-right: 1rem;
+        }
+        .kpi-value {
+            font-size: 1.875rem;
+            font-weight: 700;
+        }
+        .kpi-title {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+        /* Styles for smooth transition */
+        .form-container.hidden {
+            max-height: 0;
+            opacity: 0;
+            transform: scaleY(0.9);
+            margin-top: 0 !important;
+            pointer-events: none;
+        }
+        .form-container {
+            max-height: 1200px; /* Increased max-height */
+            opacity: 1;
+            transform: scaleY(1);
+            transition: all 0.5s ease-in-out;
+            transform-origin: top;
+            overflow: hidden;
+        }
+        .hidden-field {
+            display: none;
+        }
+        .input-readonly {
+            background-color: #e5e7eb;
+            cursor: not-allowed;
+        }
+        .input-editable {
+            background-color: #f9fafb;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Dashboard de Control de Gasolina</h1>
+            <p class="text-gray-600 mt-2">Analiza y gestiona tus consumos de combustible de forma inteligente.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Columna del Formulario -->
+            <div class="lg:col-span-1 space-y-6 h-fit">
+                 <button id="toggle-form-btn" class="w-full flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-transform transform hover:scale-105 duration-300">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    Añadir Nuevo Registro
+                </button>
+                <div id="form-wrapper" class="form-container hidden">
+                    <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h2 class="text-2xl font-semibold mb-6 border-b pb-4 text-gray-800">Detalles del Gasto</h2>
+                        <form id="gas-form" class="space-y-4">
+                            <!-- Hidden input for editing -->
+                            <input type="hidden" id="edit-id">
+                            <div>
+                                <label for="fecha" class="block text-sm font-medium text-gray-700">Fecha</label>
+                                <input type="date" id="fecha" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500 transition input-editable">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                   <label for="cantidad" class="block text-sm font-medium text-gray-700">Cantidad (Litros)</label>
+                                   <input type="number" step="0.01" id="cantidad" placeholder="e.g., 40.5" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500 transition input-editable">
+                                </div>
+                                <div>
+                                    <label for="precio" class="block text-sm font-medium text-gray-700">Precio / Litro</label>
+                                    <input type="number" step="0.01" id="precio" placeholder="e.g., 22.50" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500 transition input-editable">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label for="subtotal" class="block text-sm font-medium text-gray-700">Subtotal (MXN)</label>
+                                <input type="number" step="0.01" id="subtotal" placeholder="Ingresa el subtotal" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500 transition input-editable">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="iva" class="block text-sm font-medium text-gray-500">IVA (16%)</label>
+                                    <input type="number" id="iva" readonly class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 input-readonly">
+                                </div>
+                                <div>
+                                    <label for="total" class="block text-sm font-medium text-gray-500">Total</label>
+                                    <input type="number" id="total" readonly class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 input-readonly">
+                                </div>
+                            </div>
+
+                             <div class="flex items-center">
+                                <input id="viaticos-check" type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <label for="viaticos-check" class="ml-2 block text-sm text-gray-900">Es Viático</label>
+                            </div>
+                            
+                            <div id="viatico-owner-div" class="hidden-field">
+                                <label for="viatico-owner" class="block text-sm font-medium text-gray-700">Viáticos de:</label>
+                                <input type="text" id="viatico-owner" placeholder="Nombre de la persona" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500 transition input-editable">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="nombre" class="block text-sm font-medium text-gray-700">Nombre</label>
+                                    <select id="nombre" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500 transition input-editable">
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="tarjeta" class="block text-sm font-medium text-gray-500"># Tarjeta</label>
+                                    <input type="text" id="tarjeta" readonly class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 transition">
+                                </div>
+                            </div>
+                            
+                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div id="auto-select-div">
+                                    <label for="auto" class="block text-sm font-medium text-gray-700">Auto</label>
+                                    <select id="auto" required class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500 transition input-editable">
+                                         <option value="">Seleccionar...</option>
+                                    </select>
+                                </div>
+                                <div id="auto-text-div" class="hidden-field">
+                                     <label for="auto-text" class="block text-sm font-medium text-gray-700">Auto (Viático)</label>
+                                     <input type="text" id="auto-text" placeholder="e.g., Ford Focus Rentado" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500 transition input-editable">
+                                </div>
+                                <div>
+                                    <label for="marca" class="block text-sm font-medium text-gray-500">Marca</label>
+                                    <input type="text" id="marca" readonly class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm p-3 transition">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="comprobante" class="block text-sm font-medium text-gray-700">Comprobante (PDF, JPG, PNG)</label>
+                                <input type="file" id="comprobante" accept=".pdf,.jpg,.jpeg,.png" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                <p id="file-name-display" class="text-xs text-gray-500 mt-1"></p>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-transform transform hover:scale-105 duration-300">
+                                Guardar Registro
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna de Dashboard y Registros -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- KPIs -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="kpi-card bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg">
+                        <div class="kpi-icon bg-white/20"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01"></path></svg></div>
+                        <div><div class="kpi-title">Gasto Total (Mes Actual)</div><div id="kpi-gasto-total" class="kpi-value">$0.00</div></div>
+                    </div>
+                    <div class="kpi-card bg-gradient-to-br from-green-500 to-green-600 shadow-lg">
+                        <div class="kpi-icon bg-white/20"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m12 0a2 2 0 100-4m0 4a2 2 0 110-4"></path></svg></div>
+                        <div><div class="kpi-title">Litros Consumidos (Mes)</div><div id="kpi-litros" class="kpi-value">0.00</div></div>
+                    </div>
+                </div>
+
+                <!-- Sección de Gráficas -->
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4">
+                        <h2 class="text-xl font-semibold mb-2 sm:mb-0">Análisis de Consumo</h2>
+                        <div class="flex items-center gap-2">
+                             <label for="month-filter" class="text-sm font-medium">Filtrar por Mes:</label>
+                             <select id="month-filter" class="bg-gray-50 border border-gray-300 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2 transition"></select>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="p-4 rounded-xl"><h3 class="text-lg font-medium text-center mb-4">Distribución de Gasto</h3><div class="chart-container"><canvas id="distribucionGastoChart"></canvas></div></div>
+                        <div class="p-4 rounded-xl"><h3 class="text-lg font-medium text-center mb-4">Gasto Mensual por Persona</h3><div class="chart-container"><canvas id="gastoPersonaChart"></canvas></div></div>
+                        <div class="p-4 rounded-xl"><h3 class="text-lg font-medium text-center mb-4">Consumo en Litros por Auto</h3><div class="chart-container"><canvas id="consumoAutoChart"></canvas></div></div>
+                        <div class="p-4 rounded-xl"><h3 class="text-lg font-medium text-center mb-4">Tendencia de Gasto Total</h3><div class="chart-container"><canvas id="tendenciaGastoChart"></canvas></div></div>
+                    </div>
+                </div>
+
+                <!-- Sección de Registros -->
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-xl font-semibold mb-4 border-b pb-4">Historial de Registros</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3">Detalles</th>
+                                    <th class="px-4 py-3">Persona / #Tarjeta</th>
+                                    <th class="px-4 py-3 text-right">Litros</th>
+                                    <th class="px-4 py-3 text-right">Precio/L</th>
+                                    <th class="px-4 py-3 text-right">Subtotal</th>
+                                    <th class="px-4 py-3 text-right">Total</th>
+                                    <th class="px-4 py-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="records-table"></tbody>
+                        </table>
+                         <p id="no-records" class="text-center text-gray-500 py-8">Aún no hay registros para mostrar.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const IVA_RATE = 0.16;
+        const dataPersonas = { "Juan Pérez": "XXXX-1234", "Maria García": "XXXX-5678", "Carlos López": "XXXX-9012", "Ana Martínez": "XXXX-4321" };
+        const dataAutos = { "Jetta 2020": "Volkswagen", "Sentra 2022": "Nissan", "Civic 2019": "Honda", "Kia Rio 2023": "Kia" };
+        
+        const form = document.getElementById('gas-form');
+        const subtotalInput = document.getElementById('subtotal');
+        const ivaInput = document.getElementById('iva');
+        const totalInput = document.getElementById('total');
+        const nombreSelect = document.getElementById('nombre');
+        const tarjetaInput = document.getElementById('tarjeta');
+        const autoSelect = document.getElementById('auto');
+        const autoSelectDiv = document.getElementById('auto-select-div');
+        const autoTextInput = document.getElementById('auto-text');
+        const autoTextDiv = document.getElementById('auto-text-div');
+        const marcaInput = document.getElementById('marca');
+        const recordsTableBody = document.getElementById('records-table');
+        const noRecordsMsg = document.getElementById('no-records');
+        const monthFilter = document.getElementById('month-filter');
+        const toggleFormBtn = document.getElementById('toggle-form-btn');
+        const formWrapper = document.getElementById('form-wrapper');
+        const fileInput = document.getElementById('comprobante');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        const viaticosCheck = document.getElementById('viaticos-check');
+        const viaticoOwnerDiv = document.getElementById('viatico-owner-div');
+        const viaticoOwnerInput = document.getElementById('viatico-owner');
+
+
+        let registros = JSON.parse(localStorage.getItem('gasRegistros')) || [];
+        let chartInstances = {};
+        const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+        const fileToBase64 = file => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+
+        const popularSelects = () => {
+            Object.keys(dataPersonas).forEach(nombre => nombreSelect.add(new Option(nombre, nombre)));
+            Object.keys(dataAutos).forEach(auto => autoSelect.add(new Option(auto, auto)));
+        };
+        
+        const calcularTotal = () => {
+            const subtotal = parseFloat(subtotalInput.value) || 0;
+            const iva = subtotal * IVA_RATE;
+            totalInput.value = (subtotal + iva).toFixed(2);
+            ivaInput.value = iva.toFixed(2);
+        };
+        
+        const actualizarCamposAsociados = () => {
+            if (!viaticosCheck.checked) {
+                tarjetaInput.value = dataPersonas[nombreSelect.value] || '';
+                marcaInput.value = dataAutos[autoSelect.value] || '';
+            }
+        };
+
+        const guardarRegistros = () => localStorage.setItem('gasRegistros', JSON.stringify(registros));
+        
+        const resetForm = () => {
+            form.reset();
+            document.getElementById('edit-id').value = '';
+            fileNameDisplay.textContent = '';
+            viaticosCheck.checked = false;
+            toggleViaticosFields(false);
+            actualizarCamposAsociados();
+        }
+
+        const handleEdit = (id) => {
+            const record = registros.find(r => r.id === id);
+            if (!record) return;
+            
+            resetForm();
+            formWrapper.classList.remove('hidden');
+
+            document.getElementById('edit-id').value = record.id;
+            document.getElementById('fecha').value = record.fecha;
+            document.getElementById('cantidad').value = record.cantidad;
+            document.getElementById('precio').value = record.precio;
+            document.getElementById('subtotal').value = record.subtotal;
+            document.getElementById('iva').value = record.iva;
+            document.getElementById('total').value = record.total;
+            fileNameDisplay.textContent = record.comprobanteName || '';
+            
+            viaticosCheck.checked = record.esViatico;
+            toggleViaticosFields(record.esViatico);
+            
+            if(record.esViatico) {
+                viaticoOwnerInput.value = record.nombre; // Viatico owner is the main name
+                tarjetaInput.value = record.tarjeta;
+                autoTextInput.value = record.auto;
+                marcaInput.value = record.marca;
+            } else {
+                 nombreSelect.value = record.nombre;
+                 autoSelect.value = record.auto;
+            }
+
+            actualizarCamposAsociados();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+        
+        const handleDelete = (id) => {
+            if (confirm('¿Estás seguro de que quieres eliminar este registro?')) {
+                registros = registros.filter(reg => reg.id !== id);
+                guardarRegistros();
+                render();
+            }
+        };
+        
+        const handleViewComprobante = (id) => {
+            const record = registros.find(r => r.id === id);
+            if (record && record.comprobanteData) {
+                const win = window.open();
+                win.document.write(`<iframe src="${record.comprobanteData}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+            }
+        }
+
+        const renderRegistros = () => {
+            recordsTableBody.innerHTML = '';
+            const hasRecords = registros.length > 0;
+            noRecordsMsg.style.display = hasRecords ? 'none' : 'block';
+            recordsTableBody.parentElement.style.display = hasRecords ? 'table' : 'none';
+            
+            [...registros].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).forEach(reg => {
+                const tr = document.createElement('tr');
+                tr.className = 'bg-white border-b hover:bg-gray-50 transition-colors';
+                
+                let viaticoInfo = '';
+                if (reg.esViatico) {
+                    viaticoInfo = `<div class="text-xs text-white bg-yellow-500 font-semibold inline-block px-2 py-0.5 rounded-full">VIÁTICO</div>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="px-4 py-4">
+                        <div class="font-medium text-gray-900">${reg.fecha}</div>
+                        <div class="text-sm text-gray-500">${reg.auto} (${reg.marca || 'N/A'})</div>
+                    </td>
+                    <td class="px-4 py-4">
+                        <div class="font-medium text-gray-900">${reg.nombre}</div>
+                        <div class="text-sm text-gray-500">${reg.tarjeta}</div>
+                         ${viaticoInfo}
+                    </td>
+                    <td class="px-4 py-4 text-right">${parseFloat(reg.cantidad).toFixed(2)} L</td>
+                    <td class="px-4 py-4 text-right">$${parseFloat(reg.precio).toFixed(2)}</td>
+                    <td class="px-4 py-4 text-right">$${parseFloat(reg.subtotal).toFixed(2)}</td>
+                    <td class="px-4 py-4 text-right font-bold text-indigo-600">$${parseFloat(reg.total).toFixed(2)}</td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="flex items-center justify-center space-x-2">
+                             <button title="Ver Comprobante" class="view-btn p-2 rounded-full hover:bg-gray-100 transition ${!reg.comprobanteData ? 'opacity-30 cursor-not-allowed' : ''}" data-id="${reg.id}" ${!reg.comprobanteData ? 'disabled' : ''}><svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button>
+                             <button title="Editar" class="edit-btn p-2 rounded-full hover:bg-gray-100 transition" data-id="${reg.id}"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+                             <button title="Eliminar" class="delete-btn p-2 rounded-full hover:bg-gray-100 transition" data-id="${reg.id}"><svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                        </div>
+                    </td>
+                `;
+                recordsTableBody.appendChild(tr);
+            });
+            recordsTableBody.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', (e) => handleEdit(e.currentTarget.dataset.id)));
+            recordsTableBody.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', (e) => handleDelete(e.currentTarget.dataset.id)));
+            recordsTableBody.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', (e) => handleViewComprobante(e.currentTarget.dataset.id)));
+        };
+        
+        const populateMonthFilter = () => {
+            const availableMonths = [...new Set(registros.map(r => r.fecha.substring(0, 7)))].sort().reverse();
+            monthFilter.innerHTML = '<option value="all">Todos los Meses</option>';
+            availableMonths.forEach(monthStr => {
+                const [year, month] = monthStr.split('-');
+                const optionText = `${monthNames[parseInt(month) - 1]} ${year}`;
+                monthFilter.add(new Option(optionText, monthStr));
+            });
+        };
+
+        const renderDashboard = () => {
+            // ... (dashboard rendering code remains the same, no changes needed here)
+            const selectedMonth = monthFilter.value;
+            const filteredRegistros = selectedMonth === 'all' 
+                ? registros 
+                : registros.filter(r => r.fecha.startsWith(selectedMonth));
+            const currentMonthStr = new Date().toISOString().substring(0, 7);
+            const kpiRegistros = registros.filter(r => r.fecha.startsWith(currentMonthStr));
+            const totalGasto = kpiRegistros.reduce((sum, r) => sum + parseFloat(r.total), 0);
+            const totalLitros = kpiRegistros.reduce((sum, r) => sum + parseFloat(r.cantidad), 0);
+            document.getElementById('kpi-gasto-total').textContent = `$${totalGasto.toFixed(2)}`;
+            document.getElementById('kpi-litros').textContent = `${totalLitros.toFixed(2)}`;
+
+            Object.values(chartInstances).forEach(chart => chart.destroy());
+            const chartColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+            const gastoPorPersonaTotal = filteredRegistros.reduce((acc, r) => { acc[r.nombre] = (acc[r.nombre] || 0) + parseFloat(r.total); return acc; }, {});
+            chartInstances.distribucion = new Chart('distribucionGastoChart', { type: 'doughnut', data: { labels: Object.keys(gastoPorPersonaTotal), datasets: [{ data: Object.values(gastoPorPersonaTotal), backgroundColor: chartColors, borderColor: '#fff', borderWidth: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
+            chartInstances.gastoPersona = new Chart('gastoPersonaChart', { type: 'bar', data: { labels: Object.keys(gastoPorPersonaTotal), datasets: [{ label: 'Gasto (MXN)', data: Object.values(gastoPorPersonaTotal), backgroundColor: '#3b82f6' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } } });
+            const consumoPorAuto = filteredRegistros.reduce((acc, r) => { acc[r.auto] = (acc[r.auto] || 0) + parseFloat(r.cantidad); return acc; }, {});
+            chartInstances.consumoAuto = new Chart('consumoAutoChart', { type: 'bar', data: { labels: Object.keys(consumoPorAuto), datasets: [{ label: 'Litros', data: Object.values(consumoPorAuto), backgroundColor: '#10b981' }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true } }, plugins: { legend: { display: false } } } });
+            const gastoPorFecha = [...registros].sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).reduce((acc, r) => { acc[r.fecha] = (acc[r.fecha] || 0) + parseFloat(r.total); return acc; }, {});
+            chartInstances.tendencia = new Chart('tendenciaGastoChart', { type: 'line', data: { labels: Object.keys(gastoPorFecha), datasets: [{ label: 'Gasto Total', data: Object.values(gastoPorFecha), borderColor: '#ef4444', tension: 0.3, fill: true, backgroundColor: 'rgba(239, 68, 68, 0.1)' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } } });
+        };
+        
+        const render = () => {
+            populateMonthFilter();
+            renderRegistros();
+            renderDashboard();
+        };
+        
+        const toggleViaticosFields = (isViatico) => {
+            if (isViatico) {
+                viaticoOwnerDiv.style.display = 'block';
+                viaticoOwnerInput.required = true;
+
+                nombreSelect.disabled = true;
+                nombreSelect.required = false;
+
+                tarjetaInput.readOnly = false;
+                tarjetaInput.classList.remove('input-readonly');
+                tarjetaInput.classList.add('input-editable');
+
+                autoSelectDiv.style.display = 'none';
+                autoTextDiv.style.display = 'block';
+                autoSelect.required = false;
+                autoTextInput.required = true;
+
+                marcaInput.readOnly = false;
+                marcaInput.classList.remove('input-readonly');
+                marcaInput.classList.add('input-editable');
+
+            } else {
+                viaticoOwnerDiv.style.display = 'none';
+                viaticoOwnerInput.required = false;
+                
+                nombreSelect.disabled = false;
+                nombreSelect.required = true;
+                
+                tarjetaInput.readOnly = true;
+                tarjetaInput.classList.add('input-readonly');
+                tarjetaInput.classList.remove('input-editable');
+
+                autoSelectDiv.style.display = 'block';
+                autoTextDiv.style.display = 'none';
+                autoSelect.required = true;
+                autoTextInput.required = false;
+
+                marcaInput.readOnly = true;
+                marcaInput.classList.add('input-readonly');
+                marcaInput.classList.remove('input-editable');
+            }
+            actualizarCamposAsociados();
+        };
+
+        const handleFormSubmit = async (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('edit-id').value;
+            const file = fileInput.files[0];
+
+            let comprobanteData = null;
+            let comprobanteName = null;
+
+            if (file) {
+                comprobanteData = await fileToBase64(file);
+                comprobanteName = file.name;
+            } else if (editId) {
+                const existingRecord = registros.find(r => r.id === editId);
+                comprobanteData = existingRecord.comprobanteData;
+                comprobanteName = existingRecord.comprobanteName;
+            }
+            
+            const isViatico = viaticosCheck.checked;
+
+            const recordData = {
+                fecha: document.getElementById('fecha').value,
+                subtotal: document.getElementById('subtotal').value,
+                iva: document.getElementById('iva').value,
+                total: document.getElementById('total').value,
+                cantidad: document.getElementById('cantidad').value,
+                precio: document.getElementById('precio').value,
+                nombre: isViatico ? viaticoOwnerInput.value : nombreSelect.value,
+                tarjeta: tarjetaInput.value,
+                auto: isViatico ? autoTextInput.value : autoSelect.value,
+                marca: isViatico ? marcaInput.value : dataAutos[autoSelect.value] || '',
+                esViatico: isViatico,
+                comprobanteData,
+                comprobanteName
+            };
+
+            if (editId) {
+                const index = registros.findIndex(r => r.id === editId);
+                registros[index] = { ...registros[index], ...recordData };
+            } else {
+                registros.push({ id: Date.now().toString(), ...recordData });
+            }
+            
+            guardarRegistros();
+            render();
+            resetForm();
+            formWrapper.classList.add('hidden');
+        };
+
+        // --- EVENT LISTENERS ---
+        subtotalInput.addEventListener('input', calcularTotal);
+        nombreSelect.addEventListener('change', actualizarCamposAsociados);
+        autoSelect.addEventListener('change', actualizarCamposAsociados);
+        form.addEventListener('submit', handleFormSubmit);
+        monthFilter.addEventListener('change', renderDashboard);
+        toggleFormBtn.addEventListener('click', () => {
+            formWrapper.classList.toggle('hidden');
+            if (!formWrapper.classList.contains('hidden')) {
+                resetForm(); // Reset form when opening
+            }
+        });
+        fileInput.addEventListener('change', () => {
+             fileNameDisplay.textContent = fileInput.files[0] ? fileInput.files[0].name : '';
+        });
+        viaticosCheck.addEventListener('change', (e) => toggleViaticosFields(e.target.checked));
+
+        // --- INICIALIZACIÓN ---
+        popularSelects();
+        render();
+        toggleViaticosFields(false); // Ensure correct initial state
+    });
+    </script>
+</body>
+</html>
